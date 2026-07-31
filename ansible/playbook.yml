@@ -1,0 +1,72 @@
+- name: Prepare and harden the Penpot host
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Install firewall and fail2ban
+      apt:
+        name: [ufw, fail2ban]
+        state: present
+        update_cache: true
+
+    - name: Default deny incoming
+      community.general.ufw:
+        direction: incoming
+        policy: deny
+
+    - name: Allow required ports
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop: ["22", "80", "443"]
+
+    - name: Enable firewall
+      community.general.ufw:
+        state: enabled
+
+    - name: Disable root SSH login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin'
+        line: 'PermitRootLogin no'
+      notify: restart ssh
+
+    - name: Kernel hardening
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+      loop:
+        - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+        - { name: 'kernel.randomize_va_space', value: '2' }
+        - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+
+    - name: Create proxy directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /opt/penpot/proxy
+        - /opt/penpot/proxy/certs
+
+    - name: Generate self signed certificate
+      command: >
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048
+        -keyout /opt/penpot/proxy/certs/penpot.key
+        -out /opt/penpot/proxy/certs/penpot.crt
+        -subj "/CN={{ public_host }}"
+      args:
+        creates: /opt/penpot/proxy/certs/penpot.crt
+
+    - name: Render nginx config
+      template:
+        src: templates/nginx.conf.j2
+        dest: /opt/penpot/proxy/nginx.conf
+
+  handlers:
+    - name: restart ssh
+      service:
+        name: ssh
+        state: restarted
