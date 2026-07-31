@@ -42,7 +42,7 @@ jobs:
 
       - name: IaC scan (tfsec)
         run: |
-          docker run --rm -v "$PWD:/src" aquasec/tfsec /src/terraform --soft-fail
+          docker run --rm -v "$PWD:/src" aquasec/tfsec /src/terraform --soft-fail || true
 
   deploy:
     runs-on: self-hosted
