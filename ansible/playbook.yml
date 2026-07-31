@@ -4,9 +4,9 @@
   become: true
 
   tasks:
-    - name: Install firewall and fail2ban
+    - name: Install firewall and fail2ban and openssh
       apt:
-        name: [ufw, fail2ban]
+        name: [ufw, fail2ban, openssh-server]
         state: present
         update_cache: true
 
