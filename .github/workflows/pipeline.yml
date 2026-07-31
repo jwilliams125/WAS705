@@ -2,7 +2,7 @@ name: DevSecOps Pipeline
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -30,13 +30,15 @@ jobs:
 
       - name: SAST (Bandit on Python)
         run: |
-          pip install --quiet bandit
-          bandit -r scripts/ -f txt || true
+          python3 -m venv /tmp/scanenv
+          /tmp/scanenv/bin/pip install --quiet bandit
+          /tmp/scanenv/bin/bandit -r scripts/ -f txt || true
 
       - name: IaC scan (Checkov)
         run: |
-          pip install --quiet checkov
-          checkov -d terraform/ --soft-fail
+          python3 -m venv /tmp/checkovenv
+          /tmp/checkovenv/bin/pip install --quiet checkov
+          /tmp/checkovenv/bin/checkov -d terraform/ --soft-fail
 
       - name: IaC scan (tfsec)
         run: |
